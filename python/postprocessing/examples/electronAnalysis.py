@@ -7,6 +7,13 @@ import os
 import sys
 import ROOT
 ROOT.PyConfig.IgnoreCommandLineOptions = True
+PI = ROOT.TMath.Pi()
+
+def deltaR(a,b):
+    dp = abs(a.phi() - b.phi())
+    if dp > PI: dp -= 2*PI
+    de = a.eta() - b.eta()
+    return math.sqrt(dp*dp + de*de)
 
 def equals(a,b,err=0.005): return abs(a-b)<err
 
@@ -133,12 +140,23 @@ class ElectronAnalysis(Module):
         #       
         
         # reco electron loop
+        recalcMatch = False
         for ele_idx, ele in enumerate(electrons):
             self.h_ele_pt.Fill( ele.pt )
             self.h_ele_pt_eta.Fill( ele.pt, ele.eta )
             isTruthMatch = (ele.genPartIdx >= 0 and ele.genPartFlav==1)
+            match_idx = ele.genPartIdx
+            if recalcMatch:
+                best_dR=9e9
+                for gen_ele in gen_electrons:
+                    dr = deltaR(gen_ele, ele)
+                    if dr < 0.1 and dr < best_dR:
+                        best_dR = dr
+                        match_idx = gen_ele.idx
+                        isTruthMatch = True
             if isTruthMatch:
                 truth_to_reco[ele.genPartIdx] = ele_idx
+                truth_to_reco[match_idx] = ele_idx
                 self.h_ele_pt_match.Fill( ele.pt )
                 #reco_leps.append(ele)
             
